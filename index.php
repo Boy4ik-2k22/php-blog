@@ -5,11 +5,15 @@ use Slim\Factory\AppFactory;
 use Twig\Loader\FilesystemLoader;
 use Twig\Environment;
 use Blog\PostMapper;
+use Blog\LatestPosts;
+use Blog\Twig\AssetExtention;
 
 require __DIR__ . '/vendor/autoload.php';
 
 $loader = new FilesystemLoader('templates');
 $view = new Environment($loader);
+
+$view->addFunction(new AssetExtention());
 
 $config = include 'config/database.php';
 $dsn = $config['dsn'];
@@ -25,12 +29,11 @@ try {
     exit;
 }
 
-$postMapper = new PostMapper($connection);
-
 $app = AppFactory::create();
 
-$app->get('/', function (Request $request, Response $response, $args) use ($view, $postMapper){
-    $posts = $postMapper->getList('ASC');
+$app->get('/', function (Request $request, Response $response) use ($view, $connection){
+    $latestPosts = new LatestPosts($connection);
+    $posts = $latestPosts->get(3);
 
     $body = $view->render('index.twig', [
         'posts' => $posts
@@ -39,7 +42,7 @@ $app->get('/', function (Request $request, Response $response, $args) use ($view
     return $response;
 });
 
-$app->get('/about', function (Request $request, Response $response, $args) use ($view){
+$app->get('/about', function (Request $request, Response $response) use ($view){
     $body = $view->render('about.twig', [
         "name" => "Andriy"
     ]);
@@ -47,7 +50,25 @@ $app->get('/about', function (Request $request, Response $response, $args) use (
     return $response;
 });
 
-$app->get('/{url_key}', function (Request $request, Response $response, $args) use ($view, $postMapper){
+$app->get('/blog[/{page}]', function (Request $request, Response $response, $args) use ($view, $connection){
+    $latestPosts = new PostMapper($connection);
+
+    $page = isset($args['page']) ? (int) $args['page'] : 1;
+
+    $limit = 2;
+
+    $posts = $latestPosts->getList($page, $limit, 'DESC');
+
+    $body = $view->render('blog.twig', [
+        'posts' => $posts
+    ]);
+    $response->getBody()->write($body);
+    return $response;
+});
+
+$app->get('/{url_key}', function (Request $request, Response $response, $args) use ($view, $connection){
+    $postMapper = new PostMapper($connection);
+
     $post = $postMapper->getByUrlKey((string) $args['url_key']);
 
     if (empty($post)) {
