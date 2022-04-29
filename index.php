@@ -1,4 +1,5 @@
 <?php
+
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -6,14 +7,12 @@ use Twig\Loader\FilesystemLoader;
 use Twig\Environment;
 use Blog\PostMapper;
 use Blog\LatestPosts;
-use Blog\Twig\AssetExtention;
+use Blog\Slim\TwigMiddleware;
 
 require __DIR__ . '/vendor/autoload.php';
 
 $loader = new FilesystemLoader('templates');
 $view = new Environment($loader);
-
-$view->addFunction(new AssetExtention());
 
 $config = include 'config/database.php';
 $dsn = $config['dsn'];
@@ -30,6 +29,7 @@ try {
 }
 
 $app = AppFactory::create();
+$app->add(new TwigMiddleware($view));
 
 $app->get('/', function (Request $request, Response $response) use ($view, $connection){
     $latestPosts = new LatestPosts($connection);
