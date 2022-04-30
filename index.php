@@ -1,5 +1,6 @@
 <?php
 
+use DI\ContainerBuilder;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -11,8 +12,12 @@ use Blog\Slim\TwigMiddleware;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$loader = new FilesystemLoader('templates');
-$view = new Environment($loader);
+$builder = new ContainerBuilder();
+$builder->addDefinitions('config/di.php');
+
+$container = $builder->build();
+
+AppFactory::setContainer($container);
 
 $config = include 'config/database.php';
 $dsn = $config['dsn'];
@@ -29,6 +34,9 @@ try {
 }
 
 $app = AppFactory::create();
+
+$view = $container->get(Environment::class);
+
 $app->add(new TwigMiddleware($view));
 
 $app->get('/', function (Request $request, Response $response) use ($view, $connection){
